@@ -2,13 +2,15 @@
 
 import time
 import sys
+import metrika_meter
 
 __author__ = 'Javier Pimás'
 
 
-class MetrikaTimer(object):
+class MetrikaTimer(metrika_meter.MetrikaMeter):
 
     def __init__(self):
+        super(MetrikaTimer, self).__init__("ticks")
 
         if sys.platform == "win32":
             # On Windows, the best timer is time.clock()
@@ -19,11 +21,8 @@ class MetrikaTimer(object):
 
     def start(self):
 
-        self.prev_tick = self.timer()
+        self.set(self.timer())
 
     def stop(self):
-        self.elapsed = self.timer() - self.prev_tick
-        return self.elapsed
+        return self.done(self.timer())
 
-    def elapsed(self):
-        self.elapsed

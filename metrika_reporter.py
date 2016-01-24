@@ -1,7 +1,23 @@
 # -*- coding: utf-8 -*-
 
-import texttable as tt
+import platform
+import time
 from math import sqrt
+
+try:
+    import texttable as tt
+except ImportError:
+    print ("please install texttable to show results (sudo apt-get install python-texttable?")
+
+try:
+    import psutil
+except ImportError:
+    print ("please install psutil to show results (sudo apt-get install python-psutil?")
+
+try:
+    from cpuinfo import cpuinfo
+except ImportError:
+    print ("please install cpuinfo to show results (pip install py-cpuinfo")
 
 __author__ = 'Javier Pimás'
 
@@ -19,6 +35,15 @@ def report(results):
 
     table = tab.draw()
     print (table)
+
+    context = '\n%s-%s-%s on %s' % (platform.system(), platform.release(), platform.machine(),
+                                  time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())) + '.'
+
+    print (context)
+    print ("%d logical cores (%d physical)" % (psutil.cpu_count(), psutil.cpu_count(False)))
+    print (str(psutil.virtual_memory()))
+
+    print ("cpuinfo: %s" % (str(cpuinfo.get_cpu_info())))
 
 
 def report_benchmark(tab, benchmark, measures):

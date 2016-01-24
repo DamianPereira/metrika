@@ -27,7 +27,7 @@ def start(benchmarks, timer, args):
             benchmark.run_using(timer)
             benchmark.teardown()
 
-            results[benchmark].append(timer.elapsed)
+            results[benchmark].append(timer.delta())
 
         benchmark.global_teardown()
         sys.stdout.write("\n")
