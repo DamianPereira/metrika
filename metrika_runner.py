@@ -24,7 +24,7 @@ def start(benchmarks, timer, args):
             sys.stdout.write("%d... " % (i + 1))
             sys.stdout.flush()
             benchmark.setup()
-            benchmark.run_using(timer)
+            benchmark.run_using(timer, i)
             benchmark.teardown()
 
             results[benchmark].append(timer.delta())
