@@ -7,17 +7,18 @@ from math import sqrt
 try:
     import texttable as tt
 except ImportError:
-    print ("please install texttable to show results (sudo apt-get install python-texttable?")
+    print("please install texttable to show results (sudo apt-get install python3-texttable?")
 
 try:
     import psutil
 except ImportError:
-    print ("please install psutil to show results (sudo apt-get install python-psutil?")
+    print("please install psutil to show results (sudo apt-get install python3-psutil?")
 
 try:
     from cpuinfo import cpuinfo
 except ImportError:
-    print ("please install cpuinfo to show results (pip install py-cpuinfo")
+    print("please install cpuinfo to show results (pip3 install py-cpuinfo")
+
 
 __author__ = 'Javier Pimás'
 
@@ -32,13 +33,13 @@ def report(results):
     grouped = {}
 
     for benchmark in results.keys():
-        if not grouped.has_key(benchmark.name()):
+        if benchmark.name() not in grouped:
             grouped[benchmark.name()] = []
 
         grouped[benchmark.name()].append(benchmark)
 
     #for benchmark, measures in sorted(results.items()):
-    for group in grouped.values():
+    for name, group in sorted(grouped.items()):
         for benchmark in sorted(group):
             measures = results[benchmark]
             report_benchmark(tab, benchmark, measures)
@@ -46,24 +47,26 @@ def report(results):
         tab.add_row(("··········", "······", "······", "·····", "·······", "·····", "······"))
 
     table = tab.draw()
-    print (table)
+    print(table)
 
     context = '\n%s-%s-%s on %s' % (platform.system(), platform.release(), platform.machine(),
                                     time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())) + '.'
 
-    print (context)
-    print ("%d logical cores (%d physical)" % (psutil.cpu_count(), psutil.cpu_count(False)))
-    print (str(psutil.virtual_memory()))
+    print(context)
+    print("%d logical cores (%d physical)" % (psutil.cpu_count(), psutil.cpu_count(False)))
+    print(str(psutil.virtual_memory()))
 
-    print ("cpuinfo: %s" % (str(cpuinfo.get_cpu_info())))
+    print("cpuinfo: %s" % (str(cpuinfo.get_cpu_info())))
 
 
 def report_benchmark(tab, benchmark, measures):
     trimmed = trim_ends(sorted(measures), 0.1)
     runs = len(trimmed)
     average = sum(trimmed) / runs
-    stddev = sqrt(sum([(measure - average) ** 2 for measure in trimmed]))
+    squared = [(measure - average) ** 2 for measure in trimmed]
+    stddev = sqrt(sum(squared)/runs)
     stddev_relative = stddev / average * 100
+
     tab.add_row([benchmark.variation, benchmark.input, average, "%2.2f %%" % stddev_relative, stddev, len(measures),
                  len(measures) - runs])
 

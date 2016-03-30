@@ -6,7 +6,7 @@ import sys
 __author__ = 'Javier Pimás'
 
 
-def start(benchmarks, timer, args):
+def start(benchmarks, timer):
 
     runs = 5
     results = {}
