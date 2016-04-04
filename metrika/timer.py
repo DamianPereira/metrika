@@ -2,13 +2,12 @@
 
 import time
 import sys
-import metrika_meter
+from metrika.meter import MetrikaMeter
 
 __author__ = 'Javier Pimás'
 
 
-class MetrikaTimer(metrika_meter.MetrikaMeter):
-
+class MetrikaTimer(MetrikaMeter):
     def __init__(self):
         super(MetrikaTimer, self).__init__("ticks")
 

@@ -1,7 +1,7 @@
 
-import metrika_runner
-import metrika_reporter
-import metrika_database
+import metrika.runner as runner
+import metrika.reporter as reporter
+from metrika.database import MetrikaDatabase
 
 import argparse
 import socket
@@ -16,7 +16,7 @@ class MetrikaEngine:
 
         self.outliner = outliner
         self.arguments = self.parse_arguments()
-        self.database = metrika_database.MetrikaDatabase(self.arguments.testbed)
+        self.database = MetrikaDatabase(self.arguments.testbed)
 
     def go(self):
         self.arguments.func()
@@ -57,7 +57,7 @@ class MetrikaEngine:
         print("benchs skipped: " + str(done))
 
         old_results = self.database.measured_results_of(done)
-        new_results = metrika_runner.start(selected, self.arguments)
+        new_results = runner.start(selected, self.arguments)
 
         all_results = dict(old_results)
         all_results.update(new_results)
@@ -66,7 +66,7 @@ class MetrikaEngine:
     def report(self):
         plan = self.outliner.generate_fixture_for(self)
         results = self.database.measured_results_of(plan)
-        metrika_reporter.report(results)
+        reporter.report(results)
 
     def plot(self):
         plan = self.outliner.generate_fixture_for(self)
