@@ -10,17 +10,15 @@ import sys
 
 
 class MetrikaEngine:
-    def __init__(self, plan, meter):
+    def __init__(self, outliner):
         # hook to be able to have 'run' as default command
         argparse.ArgumentParser.set_default_subparser = set_default_subparser
 
-        self.plan = plan
-        self.meter = meter
-
+        self.outliner = outliner
         self.arguments = self.parse_arguments()
         self.database = metrika_database.MetrikaDatabase(self.arguments.testbed)
 
-    def start(self):
+    def go(self):
         self.arguments.func()
 
     @property
@@ -46,39 +44,44 @@ class MetrikaEngine:
         if self.arguments.bench:
             self.filter_benchmarks()
 
-        if self.arguments.force:
-            selected = self.plan
-        else:
-            selected = self.database.reject_already_measured_in(self.plan)
+        plan = self.outliner.generate_fixture_for(self)
 
-        done = [x for x in self.plan if x not in selected]
+        if self.arguments.force:
+            selected = plan
+        else:
+            selected = self.database.reject_already_measured_in(plan)
+
+        done = [x for x in plan if x not in selected]
 
         print("benchs to run: " + str(selected))
         print("benchs skipped: " + str(done))
 
         old_results = self.database.measured_results_of(done)
-        new_results = metrika_runner.start(selected, self.meter)
+        new_results = metrika_runner.start(selected, self.arguments)
 
         all_results = dict(old_results)
         all_results.update(new_results)
         self.database.save(new_results)
 
     def report(self):
-        results = self.database.measured_results_of(self.plan)
+        plan = self.outliner.generate_fixture_for(self)
+        results = self.database.measured_results_of(plan)
         metrika_reporter.report(results)
 
     def plot(self):
-        executor = self.plan[0]
-        results = self.database.measured_results_of(self.plan)
-        executor.plot(results, self.database.testbed)
+        plan = self.outliner.generate_fixture_for(self)
+        results = self.database.measured_results_of(plan)
+        self.outliner.plot(results, self.database.testbed)
 
     def parse_arguments(self):
         parser = argparse.ArgumentParser(prog='Metrika', description='A scientifically rigorous measurement tool')
+        parser.add_argument('-v', '--verbose', action='store_true', help='show more output')
         parser.add_argument('-b', '--bench', help='restrict to only specified benchs')
         parser.add_argument('--testbed', default=self.machine_name, help='name for the platform where we are running')
         subparsers = parser.add_subparsers(help='possible commands')
 
         parser_run = subparsers.add_parser('run', help='measure runs')
+        parser_run.add_argument('-I', '--invocations', type=int, default=5, help='number of invocations')
         parser_run.add_argument('-i', type=int, default=5, help='number of iterations')
         parser_run.add_argument('-f', '--force', action='store_true',
                                 help='force measuring again even if results are already in database')
@@ -87,13 +90,16 @@ class MetrikaEngine:
                                 help='show output of programs being run in stdout')
         parser_run.add_argument('-e', '--hide-errors', action='store_true',
                                 help='hide errors of programs being run')
+        parser_run.add_argument('series', help='choose which series to run')
         parser_run.set_defaults(func=self.run_command)
 
         parser_report = subparsers.add_parser('report', help='report measures given results database, without running\n'
                                                              ' benchs again')
+        parser_report.add_argument('series', help='choose which series to report')
         parser_report.set_defaults(func=self.report_command)
 
         parser_plot = subparsers.add_parser('plot', help='plot results from database contents')
+        parser_plot.add_argument('series', help='choose which series to plot')
         parser_plot.set_defaults(func=self.plot_command)
 
         parser.set_default_subparser('run')

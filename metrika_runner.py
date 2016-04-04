@@ -6,30 +6,28 @@ import sys
 __author__ = 'Javier Pimás'
 
 
-def start(benchmarks, timer):
+def start(executors, options):
 
-    runs = 5
     results = {}
+    invocations = options.invocations
 
-    # random.shuffle(self.benchmarks)
+    for executor in executors:
+        results[executor] = []
 
-    for benchmark in benchmarks:
-        results[benchmark] = []
+        executor.global_setup()
 
-        benchmark.global_setup()
+        sys.stdout.write("running %d passes of %s. \n" % (invocations, str(executor))),
 
-        sys.stdout.write("running %d passes of %s. \n" % (runs, str(benchmark))),
-
-        for i in range(runs):
+        for i in range(invocations):
             sys.stdout.write("%d... " % (i + 1))
             sys.stdout.flush()
-            benchmark.setup()
-            benchmark.run_using(timer, i)
-            benchmark.teardown()
+            executor.setup()
+            executor.run(options, i)
+            executor.teardown()
 
-            results[benchmark].append(timer.delta())
+            results[executor].append(executor.gather_results())
 
-        benchmark.global_teardown()
+        executor.global_teardown()
         sys.stdout.write("\n")
     return results
 

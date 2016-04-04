@@ -59,7 +59,7 @@ def report(results):
     print("cpuinfo: %s" % (str(cpuinfo.get_cpu_info())))
 
 
-def report_benchmark(tab, benchmark, measures):
+def report_benchmark(tab, executor, measures):
     trimmed = trim_ends(sorted(measures), 0.1)
     runs = len(trimmed)
     average = sum(trimmed) / runs
@@ -67,10 +67,10 @@ def report_benchmark(tab, benchmark, measures):
     stddev = sqrt(sum(squared)/runs)
     stddev_relative = stddev / average * 100
 
-    tab.add_row([benchmark.variation, benchmark.input, average, "%2.2f %%" % stddev_relative, stddev, len(measures),
+    tab.add_row([str(executor.bench), str(executor.contender), average, "%2.2f %%" % stddev_relative, stddev, len(measures),
                  len(measures) - runs])
 
-    tab.set_cols_width([35, 10, 10, 10, 10, 10, 10])
+    tab.set_cols_width([50, 10, 8, 8, 8, 7, 7])
 
 
 def trim_ends(sorted_list, proportion_to_cut):
