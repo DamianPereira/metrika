@@ -1,34 +1,39 @@
 
-import metrika.runner as runner
 import metrika.reporter as reporter
-from metrika.database import MetrikaDatabase
+from metrika.database import Database
+from metrika.experiment import Experiment
+from metrika.reporter import Reporter
 
 import argparse
 import socket
-
 import sys
+from subprocess import call
 
 
-class MetrikaEngine:
-    def __init__(self, outliner):
+class Engine:
+    def __init__(self):
         # hook to be able to have 'run' as default command
         argparse.ArgumentParser.set_default_subparser = set_default_subparser
 
-        self.outliner = outliner
+        self.experiments = {}
         self.arguments = self.parse_arguments()
-        self.database = MetrikaDatabase(self.arguments.testbed)
+        self.database = Database(self.arguments.testbed)
+
+    def organize_experiment(self, name, suite):
+        experiment = Experiment(name, suite)
+        self.experiments[name] = experiment
+        return experiment
 
     def go(self):
+        self.filter_experiments()
         self.arguments.func()
-
-    @property
-    def machine_name(self):
-        return socket.gethostname()
 
     def run_command(self):
         self.run()
         if not self.arguments.quiet:
             self.report()
+
+        self.plot()
 
     def report_command(self):
         self.report()
@@ -36,42 +41,68 @@ class MetrikaEngine:
     def plot_command(self):
         self.plot()
 
-    def filter_benchmarks(self):
-        pass
+    def existing_results_of(self, experiments):
+        return self.database.stored_results_of(experiments)
+
+    def reject_already_measured_in(self, experiments):
+        return self.database.reject_already_measured_in(experiments.values())
+
+    def filter_experiments(self):
+        if self.arguments.experiment:
+            name = self.arguments.experiment
+            self.experiments = {name: self.experiments[name]}
+
+        for experiment in self.experiments.values():
+            experiment.restrict(self.arguments)
+
+        if self.arguments.force:
+            self.work = self.experiments
+        else:
+            self.work = self.reject_already_measured_in(self.experiments)
+
+        self.done = [x for x in self.work if x.name not in self.experiments]
 
     def run(self):
 
-        if self.arguments.bench:
-            self.filter_benchmarks()
+        print("experiments to run: " + str(self.work))
+        print("experiments skipped: " + str(self.done))
 
-        plan = self.outliner.generate_fixture_for(self)
+        self.try_setting_stable_cpufreq()
 
-        if self.arguments.force:
-            selected = plan
-        else:
-            selected = self.database.reject_already_measured_in(plan)
-
-        done = [x for x in plan if x not in selected]
-
-        print("benchs to run: " + str(selected))
-        print("benchs skipped: " + str(done))
-
-        old_results = self.database.measured_results_of(done)
-        new_results = runner.start(selected, self.arguments)
+        old_results = self.existing_results_of(self.done)
+        new_results = {experiment: experiment.run(self.arguments) for experiment in self.work}
 
         all_results = dict(old_results)
         all_results.update(new_results)
         self.database.save(new_results)
 
     def report(self):
-        plan = self.outliner.generate_fixture_for(self)
-        results = self.database.measured_results_of(plan)
-        reporter.report(results)
+        for name, exp in self.experiments.items():
+            results = self.existing_results_of([exp])
+            for i, measure_name in enumerate(exp.measures):
+                exp.report(name + ' ' + measure_name, results, i)
 
     def plot(self):
-        plan = self.outliner.generate_fixture_for(self)
-        results = self.database.measured_results_of(plan)
-        self.outliner.plot(results, self.database.testbed)
+        for name, exp in self.experiments.items():
+            results = self.existing_results_of([exp])
+            for i, measure_name in enumerate(exp.measures):
+                exp.plot(name + ' ' + measure_name, results, i)
+
+                # plan = self.coordinator.generate_fixture_for(self)
+        # results = self.database.measured_results_of(plan)
+        # self.coordinator.plot(results, self.database.testbed)
+
+    def try_setting_stable_cpufreq(self):
+        #call('echo "1" | tee /sys/devices/system/cpu/intel_pstate/no_turbo', shell=True)
+        #call('echo "100" | tee /sys/devices/system/cpu/intel_pstate/max_perf_pct', shell=True)
+        #call('echo "100" | tee /sys/devices/system/cpu/intel_pstate/min_perf_pct', shell=True)
+        pass
+
+        # some other tools to check cpu frequency:
+        # watch -n 0,3 'cat /proc/cpuinfo | grep "MHz"'
+
+        # also check http://askubuntu.com/questions/698195/how-to-make-cpugovernor-intel-pstate-stable
+
 
     def parse_arguments(self):
         parser = argparse.ArgumentParser(prog='Metrika', description='A scientifically rigorous measurement tool')
@@ -81,8 +112,9 @@ class MetrikaEngine:
         subparsers = parser.add_subparsers(help='possible commands')
 
         parser_run = subparsers.add_parser('run', help='measure runs')
-        parser_run.add_argument('-I', '--invocations', type=int, default=5, help='number of invocations')
-        parser_run.add_argument('-i', type=int, default=5, help='number of iterations')
+        parser_run.add_argument('-i', '--invocations', type=int, default=5, help='number of invocations')
+        # parser_run.add_argument('-I', '--iterations', type=int, default=5, help='number of iterations')
+        parser_run.add_argument('-x', '--experiment', help='experiment name')
         parser_run.add_argument('-f', '--force', action='store_true',
                                 help='force measuring again even if results are already in database')
         parser_run.add_argument('-q', '--quiet', action='store_true', help='do not show summary of results')
@@ -105,6 +137,9 @@ class MetrikaEngine:
         parser.set_default_subparser('run')
         return parser.parse_args()
 
+    @property
+    def machine_name(self):
+        return socket.gethostname()
 
 def set_default_subparser(self, name, args=None):
     """default subparser selection. Call after setup, just before parse_args()

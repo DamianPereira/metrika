@@ -3,49 +3,68 @@ import os.path
 import yaml
 
 
-class MetrikaDatabase:
+class Database:
     def __init__(self, testbed):
         self.testbed = testbed
-        self.filename = 'results-' + testbed + '.yml'
+        self.filename = 'results-' + testbed + '.txt'
         self.results = self.load()
 
     def load(self):
         if not os.path.isfile(self.filename):
             return {}
         with open(self.filename, 'r+') as f:
-            return yaml.load(f)
+            return eval(f.read())
+#            return yaml.load(f)
 
     def save(self, new_results):
-        for executor, measures in new_results.items():
-            self.results[executor.identity()] = measures
+        for experiment, experiment_results in new_results.items():
+
+            if experiment.name not in self.results.keys():
+                self.results[experiment.name] = {}
+
+            for contender, measures in experiment_results.items():
+                self.results[experiment.name][contender.id()] = measures
 
         with open(self.filename, 'w') as out:
             stream = '{\n'
-            for (id, measures) in sorted(self.results.items()):
-                stream += '    "%s": ' % id
-                stream += str(measures) + ',\n'
+            for (experiment, contender) in sorted(self.results.items()):
+                stream += '    "%s": {\n' % experiment
+                for (description, results) in contender.items():
+                    stream += '        %s: %s,\n' % (str(description), str(results))
 
-            stream = stream[:-2]
-            stream += '\n}'
+                if len(contender.items()) > 0:
+                    stream = stream[:-2]
+
+                stream += '\n    },\n'
+
+            stream += '}'
             #stream = yaml.dump(self.results, default_flow_style=False)
             return out.write(stream)
 
-    def reject_already_measured_in(self, executors):
-        new_plan = []
-        for executor in executors:
-            if executor.identity() not in self.results.keys():
-                new_plan.append(executor)
+    def reject_already_measured_in(self, experiments):
+        new_plan = {}
+        for experiment in experiments:
+            if experiment.name not in self.results:
+                new_plan[experiment] = experiment.instances()
+            else:
+                new_plan[experiment] = []
+                for contender in experiment.instances():
+                    if contender.id() not in self.results[experiment.name]:
+                        new_plan[experiment].append(contender)
 
         return new_plan
 
-    def measured_results_of(self, executors):
+    def stored_results_of(self, experiments):
         results = {}
-        for executor in executors:
-            if executor.identity() not in self.results:
-                print("Measure missing for " + executor.identity())
+        for experiment in experiments:
+            if experiment.name not in self.results:
+                print("Measure missing for " + experiment.name)
                 continue
 
-            results[executor] = self.results[executor.identity()]
+            stored = self.results[experiment.name]
+            foo = {contender: stored[contender.id()] for contender in experiment.instances()}
+
+            results[experiment.name] = foo
 
         return results
 

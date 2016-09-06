@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 
+import statistics as s
+import datetime
 import platform
-import time
-from math import sqrt
+import socket
 
 try:
     import texttable as tt
 except ImportError:
-    print("please install texttable to show results (sudo apt-get install python3-texttable?")
+    print("please install texttable to show results (pip3 install --user texttable")
 
 try:
     import psutil
@@ -17,65 +18,95 @@ except ImportError:
 try:
     from cpuinfo import cpuinfo
 except ImportError:
-    print("please install cpuinfo to show results (pip3 install py-cpuinfo")
-
+    print("please install cpuinfo to show results (pip3 install --user py-cpuinfo")
 
 __author__ = 'Javier Pimás'
 
 
-def report(results):
-    tab = tt.Texttable()
-    tab.header(['Benchmark', 'Input', 'Average', 'std dev %', 'std dev', 'runs', 'discarded'])
+class Reporter:
+    def __init__(self, name, description):
+        self.columns = []
+        self.name = name
+        self.description = description
+        self.sorter = None
 
-    tab.set_cols_align(['r', 'r', 'r', 'r', 'r', 'r', 'r'])
-    tab.set_deco(tab.HEADER | tab.VLINES)
+    def add_column(self, name, gen, size=None):
+        self.columns.append(ColumnDescriptor(name, gen, size))
 
-    grouped = {}
+    def add_median(self):
+        self.add_column('median', lambda _, results: s.median(results))
 
-    for benchmark in results.keys():
-        if benchmark.name() not in grouped:
-            grouped[benchmark.name()] = []
+    def add_stddev(self):
+        self.add_column('std dev', lambda _, results: s.pstdev(results))
 
-        grouped[benchmark.name()].append(benchmark)
+    def add_stdev_rel(self):
+        self.add_column('std dev %', lambda _, results: "%2.2f %%" % (s.pstdev(results) * 100 / s.mean(results)))
 
-    #for benchmark, measures in sorted(results.items()):
-    for name, group in sorted(grouped.items()):
-        for benchmark in sorted(group):
-            measures = results[benchmark]
-            report_benchmark(tab, benchmark, measures)
+    def add_runs(self):
+        self.add_column('runs', lambda _, res: len(res))
 
-        tab.add_row(("··········", "······", "······", "·····", "·······", "·····", "······"))
+    def add_common_columns(self):
+        self.add_median()
+        self.add_stdev_rel()
+        self.add_runs()
 
-    table = tab.draw()
-    print(table)
+    def sort_by(self, sorter):
+        self.sorter = sorter
 
-    context = '\n%s-%s-%s on %s' % (platform.system(), platform.release(), platform.machine(),
-                                    time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())) + '.'
+    def report(self, title, results, i):
+        tab = tt.Texttable()
+        tab.header([c.name for c in self.columns])
 
-    print(context)
-    print("%d logical cores (%d physical)" % (psutil.cpu_count(), psutil.cpu_count(False)))
-    print(str(psutil.virtual_memory()))
+        tab.set_cols_align(['r' for _ in self.columns])
+        tab.set_deco(tab.HEADER | tab.VLINES)
 
-    print("cpuinfo: %s" % (str(cpuinfo.get_cpu_info())))
+        rows = []
+        for experiment, contenders in sorted(results.items()):
+            for contender, measures in contenders.items():
+                values = [measure[i] for measure in measures]
+                rows.append([c.value(contender, values) for c in self.columns])
+
+        if self.sorter is not None:
+            rows = sorted(rows, key=self.sorter)
+
+        for row in rows:
+            tab.add_row(row)
+
+        tab.add_row(["." * c.size for c in self.columns])
+        tab.set_cols_width([c.size for c in self.columns])
+
+        table = tab.draw()
+        print("-----")
+        print(title)
+        print("-----")
+        print(table)
+
+        print("\nresults obtained at %s in the following system:\n" % datetime.datetime.now())
+        print(get_system_info())
 
 
-def report_benchmark(tab, executor, measures):
-    trimmed = trim_ends(sorted(measures), 0.1)
-    runs = len(trimmed)
-    average = sum(trimmed) / runs
-    squared = [(measure - average) ** 2 for measure in trimmed]
-    stddev = sqrt(sum(squared)/runs)
-    stddev_relative = stddev / average * 100
+class ColumnDescriptor:
+    def __init__(self, name, gen, size=None):
+        self.name = name
+        self.gen = gen
+        self.size = size if size is not None else len(name)
 
-    tab.add_row([str(executor.bench), str(executor.contender), average, "%2.2f %%" % stddev_relative, stddev, len(measures),
-                 len(measures) - runs])
-
-    tab.set_cols_width([50, 10, 8, 8, 8, 7, 7])
+    def value(self, contender, measures):
+        return self.gen(contender, measures)
 
 
-def trim_ends(sorted_list, proportion_to_cut):
-    size = len(sorted_list)
-    left = int(proportion_to_cut * size)
-    right = size - left
+def get_system_info():
+    info = 'testbed: ' + socket.gethostname()
+    info += '\nos:  %s (%s-%s-%s)' % (' '.join(platform.dist()),
+                                platform.system(), platform.release(), platform.machine()) + '.'
 
-    return sorted_list[left:right]
+    cpu = cpuinfo.get_cpu_info()
+    mibi = 1024*1024
+    giga = 1000*1000*1000
+    info += "\n" + "cpu: %s (@%.2f GHz), %s l2 cache, " % (cpu['brand'], cpu['hz_actual_raw'][0]/giga, cpu['l2_cache_size'])
+    info += "%d logical cores (%d physical)" % (psutil.cpu_count(), psutil.cpu_count(False))
+    mem = psutil.virtual_memory()
+    info += "\nmem: %d MB phys, %d MB free" % (mem.total/mibi, mem.free/mibi)
+
+    return info
+

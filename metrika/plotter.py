@@ -11,82 +11,152 @@ rcParams['font.family'] = 'Open Sans'
 import matplotlib.pyplot as plt
 import copy
 
+# This module is just a basic visualization of results. You can surely do better than this!
+# Results are divided into families and groups. A group has 1 element of each family
+# in order to visualize how different families relate. Drawing is not done by group, but
+# by family (as elements in the same family share color and shape).
+# Each family is represented as a 2D matrix. One dimension are the measures, the other
+# is a variable whose value changes in each group.
+# The whole plot is drawn by iterating the list of families, which contain 2D matrices as data.
 
-def plot(labels, contenders, samples_by_metric, testbed, box=False,normalize=True, normalizer=None, label='a label', title='a title'):
+#   opacity = 0.4
+opacity = 1
+error_config = {'ecolor': 'c'}
+patterns = ["//", "", "++", "\\\\", "+", "x", "o", "O", ".", "*"]
 
-    number_of_groups = len(samples_by_metric)
-    metrics_size = len(contenders)
 
-    if normalize:
-        plotted = []
-        for metric in samples_by_metric:
-            if normalizer is None:
-                norm = min([np.average(samples) for samples in metric])
-            else:
-                norm = metric[normalizer]
+class Plotter:
+    def __init__(self, configurator, label='a label', title='a title' ):
+        self.configurator = configurator
+        self.label = label
+        self.title = title
 
-            plotted.append([np.array(samples) / norm for samples in metric])
-    else:
-        plotted = copy.deepcopy(samples_by_metric)
+    def run_with(self, results, name, i):
+        self.results = results
+        self.configurator(self, name, i)
 
-    bar_width = 1 / (metrics_size + 1)
-    #   opacity = 0.4
-    opacity = 1
-    error_config = {'ecolor': 'c'}
-    patterns = ["//", "", "++", "\\\\", "+", "x", "o", "O", ".", "*"]
+    def group_by(self, variable):
+        self.group_var = variable
+        results = next(iter(self.results.values()))
+        index = next(iter(results.keys())).index_of(variable)
+        # groups = set(map(lambda cont, _: cont[variable], results.items()))
+        without = {}
+        for cont, _ in results.items():
+            id = list(cont.id())
+            id.pop(index)
+            without[cont] = tuple(id)
 
-    # generate arrays of averages by contender
-    samples_by_contender = [[] for _ in range(metrics_size)]
-    for metric in plotted:
-        for i, samples in enumerate(metric):
-            mean = np.average(samples)
-            samples_by_contender[i].append(mean)
+        ids = set(without.values())
+        self.families = [Family(id) for id in ids]
+        for cont, measures in results.items():
+            f = next(x for x in self.families if x.id == without[cont])
+            f.data[cont] = [m[0] for m in measures]
 
-    # calculate std deviation
-    error_by_contender = [[] for _ in range(metrics_size)]
-    for metric in plotted:
-        for i, samples in enumerate(metric):
-            if box:
-                value = samples
-            else:
-                value = np.std(samples)
-            error_by_contender[i].append(value)
+    def plot_boxes(self, name):
+        len_t = self.total_len()
+        len_f = self.len_families()
+        len_g = self.len_groups()
 
-    fig, ax = plt.subplots()
-    indexes = np.arange(number_of_groups)
+        bar_width = 1.0 / (len_f + 2)
+        sep_width = bar_width / (len_f - 1)
 
-    if box:
+        fig, ax = plt.subplots()
+        #plt.figure()
+
         # draw boxplots
-        for i, metric in enumerate(plotted):
-            positions = range(i * metrics_size + 1, (i+1) * metrics_size + 1)
-            plt.boxplot(metric, positions=positions, labels=contenders, showmeans=True, meanline=True)
+        for i, family in enumerate(sorted(self.families, key=lambda f: f.id)):
+            positions = np.arange(len_g)
+
+
+            values = list(family.data.values())
+            # values = list(map(lambda *a: list(a), *values))
+        #    plt.boxplot(list(family.data.values()), positions=positions, labels=labels, showmeans=True, meanline=True)
+            plt.boxplot(values, 0, 'gD',
+                        positions=positions+i*(bar_width+sep_width),
+                        widths=bar_width,
+                        showmeans=True, meanline=True)
+
+        # draw temporary red and blue lines and use them to create a legend
+        hB, = plt.plot([0.25, 0.25], 'b-')
+        hR, = plt.plot([0.25, 0.25], 'r-')
+        labels = [str(family.id) for family in self.families]
+        plt.legend((hB, hR), labels)
+
+        # draw labels at x axis
+        family = next(iter(self.families))
+        contenders = family.data.keys()
+        labels = [c[self.group_var] for c in contenders]
         ax.set_xticklabels(labels)
-        plt.xticks(range(0, len(labels) * metrics_size, metrics_size), labels, rotation=-45, ha="left")
-    else:
-        # draw bars
-        for i, contender in enumerate(samples_by_contender):
-            plt.bar(indexes + bar_width * i,  contender, bar_width,
+        positions = np.arange(len_g)
+        plt.xticks(positions+(bar_width*len_f/2.0), labels, ha="center")  # rotation=-45
+        self.do_final_step(name)
+
+    def plot_bars(self, name):
+        len_t = self.total_len()
+        len_f = self.len_families()
+        len_g = self.len_groups()
+
+        bar_width = 1.0 / (len_f + 1)
+
+        fig, ax = plt.subplots()
+
+        for i, family in enumerate(sorted(self.families, key=lambda f: f.id)):
+            positions = np.arange(len_g) + bar_width * i
+
+            values = list(family.data.values())
+            means = np.average(values)
+            stddevs = np.std(values)
+
+            plt.bar(positions, means, bar_width,
                     alpha=opacity,
                     color='#bbbbbb',
                     # edgecolor='b',
                     linewidth=0.5,
                     hatch=patterns[i],
-                    yerr=error_by_contender[i],
+                    yerr=stddevs)
                     # error_kw=error_config,
-                    label=contenders[i])
+                    #label=contenders[i])
 
-        legend = ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.12), ncol=metrics_size)
-        legend.get_title().set_fontsize('6')  # legend 'Title' fontsize
-        plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+        indexes = np.arange(len_g)
+
+        legend = ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.12), ncol=len_f)
+        #legend.get_title().set_fontsize('6')  # legend 'Title' fontsize
+        #plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+
+        # draw labels at x axis
+        family = next(iter(self.families))
+        contenders = family.data.keys()
+        labels = [c[self.group_var] for c in contenders]
+
         plt.xticks(indexes, labels, rotation=-45, ha="left")  # rotation_mode="anchor")
-    #ax.set_aspect(0.7)
+        self.do_final_step(name)
 
-    plt.xlim(xmin=0)
-    plt.xlabel(label)
-    plt.title(title, y=1.12)
-    plt.subplots_adjust(left=0.25, top=0.85, bottom=0.25)
-    # plt.legend()
-    # plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+    def len_groups(self):
+        return len(next(iter(self.families)).data)
 
-    # plt.tight_layout()
-    plt.savefig(testbed)
+    def len_families(self):
+        return len(self.families)
+
+    def total_len(self):
+        return self.len_families() * self.len_groups()
+
+    def do_final_step(self, name):
+        # ax.set_aspect(0.7)
+
+        plt.xlim(xmin=-0.25, xmax=self.len_groups())
+        plt.ylim(ymin=0)
+        plt.xlabel(self.label)
+        plt.title(self.title, y=1.12)
+        plt.subplots_adjust(left=0.25, top=0.85, bottom=0.25)
+        # plt.legend()
+        # plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+
+        #plt.tight_layout()
+        plt.savefig(name + '.pdf')
+
+class Family:
+    def __init__(self, id):
+        self.id = id
+        self.name = str(id)
+        self.data = {}
+
