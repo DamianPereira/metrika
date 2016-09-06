@@ -45,41 +45,55 @@ Usage
 -----
 For quick examples of how to use Metrika, look at `metrika_benchs_simple`, `metrika_benchs_cooperative` or `metrika_benchs_game`.
 
-The center of the library is the MetrikaEngine.
+The center of the library is the Engine.
 It knows to handle command line arguments and to
 issue high-level actions like running benchs, reporting
 results and plotting.
-Users should create an instance of this class and pass
-to it an outliner object, which handles particular user
-needs.
-The engine is generic, and the outliner has to be
-written by the users to meet their specific needs.
-The outliner creates instances of Benchmarks and
-Contenders, and combines them through Executors.
-Instances of Executor are in charge of running
-benchmarks with specific contenders.
-Usually users have to subclass MetrikaExecutor to
-accommodate to their needs.
-The executors also have to do measuring themselves,
-or at least gather the results left by the contenders
-after they are run.
+Importing the module with
 
-Benchmark metrics can be anything: total time, memory consumption, cpu utilization, whatever.
-The base library implements some simple meters: an abstract counter and a timer.
-The abstract counter accepts any measure given by the user, it is useful for things like
-measuring processor clock cycles with the `RDTSC` x86 instruction. The timer performs
-plain execution time measuring.
+    python -m metrika
+    
+will create an engine, and search for experiment configurations in the 
+current directory. An experiment is a file named `measure_*.py` that will
+be written by the user of the library and will configure all things that
+need to be done. The engine will import each experiment and call its
+corresponding `configure` method.
+The configuration has to be written by the users to meet
+their specific needs. The first thing it will need is a `Suite`,
+which is a representation of the set of things that can vary in 
+the experiment, such as input variables, program to execute, etc.
+With the variables, the suite is used calculate all the combinations
+of values that need to measured in the experiment.
+Each combination instance is called a contender. 
+An `Experiment` combines a suite, an executor and a meter to obtain
+results. To do that, it creates the contenders and executes them
+measuring with the meter that has been set. 
 
-The results of the benchmark can finally be passed to the reporter, to show them in
-console.
+Benchmark metrics can be anything: total time, memory consumption,
+cpu utilization, whatever.
+The base library implements some simple meters: an abstract counter,
+a timer, and a file reader.
+ - The `Meter` is an abstract counter that accepts any measure given
+  by the user. It can be useful for things like measuring processor
+  clock cycles with the `RDTSC` x86 instruction.
+ - The `Timer` performs execution time measuring with a Python timer.
+ - The `FileMeter` parses a result file to obtain results. In this
+   case, the execution of the contender should generate an output
+   file to be read.
+
+The results of the experiment can finally be passed to the reporter,
+to show them in console, and to the plotter to generate a pdf figure.
+Those are very basic and generic, improvements are welcome.
 
 Some things to be done that come to my mind:
 
 
 - improve command line argument handling
 - setting processor affinity
-- setting clock frequency to maintain it stable (I think best would be to under-clock it).
-- a meter to measure memory consumption
+- setting clock frequency to maintain it stable (I think best
+ would be to under-clock it, disabling turbo at least).
+- handling of results with multiple variables
 - outputting in different formats,
 - creating other projects/modules to show results: export to pdf, svg, etc.
-- support for showing progress of metrics throughout implementation lifetimes
+- better showing progress of experiments
+- showing metrics progression throughout VCS lifetimes (ie. git commits)
