@@ -8,7 +8,8 @@ __author__ = 'Javier Pimás'
 
 
 class Suite:
-    def __init__(self):
+    def __init__(self, name=""):
+        self.name = name
         self.variables = []
 
     def add_variable_from_dict(self, name, values):
