@@ -25,10 +25,5 @@ class Contender:
 
         return self.executor.run_with(options, invocation)
 
-    def setup(self):
-        pass
-
-    def teardown(self):
-        pass
 
 
