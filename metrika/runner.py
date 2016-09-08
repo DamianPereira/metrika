@@ -32,5 +32,7 @@ def run_with(executor, contenders, options):
 
         sys.stdout.write("\n")
 
+        contender.teardown()
+
     return results
 
