@@ -5,19 +5,27 @@ from metrika.executor import CommandExecutor
 from metrika.reporter import Reporter
 from metrika.plotter import Plotter
 
+from types import MethodType
+
 __author__ = 'Javier Pimás'
 
 
 class Experiment:
-    def __init__(self, name, suite):
-        self.name = name
+    def __init__(self, suite, name):
+        self._name = name
         self.suite = suite
         self.runner = runner
         self.measures = []
         self.reporter = None
+        self.setup = lambda self: self
+        self.teardown = lambda self: self
 
     def __repr__(self):
         return self.name + ' exp'
+
+    @property
+    def name(self):
+        return self._name if self._name is not None else self.suite.name
 
     def restrict(self, arguments):
         return self.suite.restrict(arguments)
@@ -28,6 +36,12 @@ class Experiment:
     def invoke_with_command(self, command_generator):
         self.executor = CommandExecutor(command_generator)
 
+    def set_setup(self, setup_func):
+        self.setup = setup_func
+
+    def set_teardown(self, teardown_func):
+        self.teardown = teardown_func
+
     def measure_execution_time(self):
         self.measures.append('time')
         self.executor.measure_execution_time()
@@ -37,7 +51,11 @@ class Experiment:
         self.executor.measure_parsing_file(description, parser, filename)
 
     def run(self, arguments):
+        print("Runing experiment " + self.name)
         contenders = self.suite.instances()
+        for contender in contenders:
+            contender.setup = MethodType(self.setup, contender)
+            contender.teardown = MethodType(self.teardown, contender)
         return self.runner.run_with(self.executor, contenders, arguments)
 
     def set_report(self, configurator, name, description):
@@ -46,7 +64,6 @@ class Experiment:
 
     def set_plotter(self, configurator, name, description):
         self.plotter = Plotter(configurator, name, description)
-
 
     def use_generic_reporter(self):
         self.reporter = Reporter('', '')

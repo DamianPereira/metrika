@@ -19,9 +19,9 @@ class Engine:
         self.arguments = self.parse_arguments()
         self.database = Database(self.arguments.testbed)
 
-    def organize_experiment(self, name, suite):
-        experiment = Experiment(name, suite)
-        self.experiments[name] = experiment
+    def organize_experiment(self, suite, name=None):
+        experiment = Experiment(suite, name)
+        self.experiments[experiment.name] = experiment
         return experiment
 
     def go(self):
@@ -70,20 +70,21 @@ class Engine:
         self.try_setting_stable_cpufreq()
 
         old_results = self.existing_results_of(self.done)
-        new_results = {experiment: experiment.run(self.arguments) for experiment in self.work}
+        sorted_work = sorted(self.work, key=lambda exp: exp.name)
+        new_results = {experiment: experiment.run(self.arguments) for experiment in sorted_work}
 
         all_results = dict(old_results)
         all_results.update(new_results)
         self.database.save(new_results)
 
     def report(self):
-        for name, exp in self.experiments.items():
+        for name, exp in sorted_items(self.experiments):
             results = self.existing_results_of([exp])
             for i, measure_name in enumerate(exp.measures):
                 exp.report(name + ' ' + measure_name, results, i)
 
     def plot(self):
-        for name, exp in self.experiments.items():
+        for name, exp in sorted_items(self.experiments):
             results = self.existing_results_of([exp])
             for i, measure_name in enumerate(exp.measures):
                 exp.plot(name + ' ' + measure_name, results, i)
@@ -167,3 +168,9 @@ def set_default_subparser(self, name, args=None):
                 sys.argv.insert(1, name)
             else:
                 args.insert(0, name)
+
+
+def sorted_items(dictionary):
+    return sorted(dictionary.items(), key=lambda keyval: keyval[0])
+
+
