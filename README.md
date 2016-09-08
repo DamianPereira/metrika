@@ -43,7 +43,7 @@ and leaves to the user the responsibility to implement specific stuff.
 
 Usage
 -----
-For quick examples of how to use Metrika, look at `metrika_benchs_simple`, `metrika_benchs_cooperative` or `metrika_benchs_game`.
+For quick examples of how to use Metrika, look at `metrika_benchs_simple` or `metrika_benchs_game`.
 
 The center of the library is the Engine.
 It knows to handle command line arguments and to
