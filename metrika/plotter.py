@@ -4,11 +4,12 @@ import matplotlib
 matplotlib.use('PDF')
 
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 
 
 # This module is just a basic visualization of results. You can surely do better than this!
 # Results are divided into families and groups. A group has 1 element of each family
-# in order to visualize how different families relate. Drawing is not done by group, but
+# in order to show different families at one bench. Drawing is not done by group, but
 # by family (as elements in the same family share color and shape).
 # Each family is represented as a 2D matrix. One dimension are the measures, the other
 # is a variable whose value changes in each group.
@@ -29,6 +30,8 @@ plt.rcParams['font.family'] = 'serif'
 #plt.rcParams['font.serif'] = 'Ubuntu'
 #plt.rcParams['font.monospace'] = 'Ubuntu Mono'
 #plt.rcParams['font.size'] = 10
+plt.rcParams['axes.facecolor'] = '#FFFFFF'
+plt.rcParams['legend.edgecolor'] = 'black'
 plt.rcParams['axes.labelsize'] = 10
 plt.rcParams['axes.labelweight'] = 'bold'
 plt.rcParams['axes.titlesize'] = 10
@@ -64,33 +67,84 @@ class Plotter:
             f = next(x for x in self.families if x.id == without[cont])
             f.data[cont] = [m[0] for m in measures]
 
+    def min_max_values(self):
+        min = 1000000000000
+        max = -100000000000
+        for f in self.families:
+            for _, measures in f.data.items():
+                for m in measures:
+                    if m > max:
+                        max = m
+                    if m < min:
+                        min = m
+
+        return min, max
+
+    def plot_boxes2(self, name):
+        # fake data
+        np.random.seed(937)
+        data = np.random.lognormal(size=(37, 4), mean=1.5, sigma=1.75)
+        labels = list('ABCD')
+        fs = 10  # fontsize
+
+        # demonstrate how to toggle the display of different elements:
+        fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(6, 6))
+        axes[0, 0].boxplot(data, labels=labels)
+        axes[0, 0].set_title('Default', fontsize=fs)
+
+        axes[0, 1].boxplot(data, labels=labels, showmeans=True)
+        axes[0, 1].set_title('showmeans=True', fontsize=fs)
+
+        axes[0, 2].boxplot(data, labels=labels, showmeans=True, meanline=True)
+        axes[0, 2].set_title('showmeans=True,\nmeanline=True', fontsize=fs)
+
+        axes[1, 0].boxplot(data, labels=labels, showbox=False, showcaps=False)
+        axes[1, 0].set_title('Tufte Style \n(showbox=False,\nshowcaps=False)', fontsize=fs)
+
+        axes[1, 1].boxplot(data, labels=labels, notch=True, bootstrap=10000)
+        axes[1, 1].set_title('notch=True,\nbootstrap=10000', fontsize=fs)
+
+        axes[1, 2].boxplot(data, labels=labels, showfliers=False)
+        axes[1, 2].set_title('showfliers=False', fontsize=fs)
+
+        for ax in axes.flatten():
+            ax.set_yscale('log')
+            ax.set_yticklabels([])
+
+        fig.subplots_adjust(hspace=0.4)
+        # plt.show()
+        plt.savefig(name + '.pdf')
+
     def plot_boxes(self, name):
         len_t = self.total_len()
         len_f = self.len_families()
         len_g = self.len_groups()
 
-        bar_width = 1.0 / (len_f + 2)
-        sep_width = bar_width / (len_f - 1)
+        box_width = 1.0 / (len_f + 2)
+        sep_width = box_width / (len_f - 1)
+        group_width = (box_width + sep_width) * len_f
 
         fig, ax = plt.subplots()
-        #plt.figure()
 
         # draw boxplots
         legends = []
         for i, family in enumerate(sorted(self.families, key=lambda f: f.id)):
-            positions = np.arange(len_g)
+            offset = i*(box_width+sep_width)
+            positions = np.arange(len_g) * group_width + offset
 
+            print("pos " + str(positions))
 
             values = list(family.data.values())
-            # values = list(map(lambda *a: list(a), *values))
-        #    plt.boxplot(list(family.data.values()), positions=positions, labels=labels, showmeans=True, meanline=True)
-            box = plt.boxplot(values, 0, 'gD',
-                              positions=positions+i*(bar_width+sep_width),
-                              widths=bar_width,
+            box = plt.boxplot(values,
+                              positions=positions,
+                              widths=box_width,
+                              #showcaps=False,
+                              #showmeans=True, meanline=True,
                               patch_artist=True)
 
             for line in box['medians']:
-                line.set_color(color_number(len_g+1)) # '#AAAAAA')
+                line.set_color('#880000')  # color_number(len_g+1)) # '#AAAAAA')
+                line.set_linewidth(0.8)
 
             for line in box['boxes']:
                 line.set_facecolor(color_number(i))
@@ -98,25 +152,22 @@ class Plotter:
                 line.set_linewidth(0.5)
 
             plt.setp(box['whiskers'], linewidth=0.5)
+            plt.setp(box['whiskers'], linestyle='-')
             plt.setp(box['caps'], linewidth=0.5)
             # plt.setp(box['boxes'], color=colors[i])
-            # plt.setp(box['whiskers'], color='black')
-            plt.setp(box['fliers'], color=color_number(len_g+1), marker='+')
+            plt.setp(box['whiskers'], color='black')
+            plt.setp(box['fliers'], color='Tomato', marker="+")  # color_number(len_g+2), marker='o')
 
             legends.append(box['boxes'][0])
 
-        # draw temporary red and blue lines and use them to create a legend
+        # create a legend
         labels = [str(family.id) for family in self.families]
         plt.legend(legends, labels, loc='best')
 
-        # draw labels at x axis
-        family = next(iter(self.families))
-        contenders = family.data.keys()
-        labels = [c[self.group_var] for c in contenders]
-        ax.set_xticklabels(labels)
-        positions = np.arange(len_g)
-        plt.xticks(positions+(bar_width*len_f/2.0), labels, ha="center")  # rotation=-45
-        self.do_final_step(name)
+        self.setup_limits(box_width, group_width)
+        self.setup_axis(ax, group_width, sep_width)
+
+        plt.savefig(name + '.pdf')
 
     def plot_bars(self, name):
         len_t = self.total_len()
@@ -130,6 +181,8 @@ class Plotter:
         legends = []
         for i, family in enumerate(sorted(self.families, key=lambda f: f.id)):
             positions = np.arange(len_g) + bar_width * i
+            print("positions")
+            print(positions)
 
             values = list(family.data.values())
             means = np.average(values)
@@ -148,21 +201,38 @@ class Plotter:
 
             legends.append(bars[0])
 
-
         labels = [str(family.id) for family in self.families]
         plt.legend(legends, labels, loc='best')
-        #legend = ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.12), ncol=len_f)
-        #legend.get_title().set_fontsize('6')  # legend 'Title' fontsize
-        #plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
 
-        # draw labels at x axis
+        self.setup_axis(ax, 1, bar_width)
+
+        plt.savefig(name + '.pdf')
+
+    def setup_limits(self, box_width, group_width):
+        plt.xlim(xmin=-box_width, xmax=self.len_groups() * group_width + box_width)
+        min_val, max_val = self.min_max_values()
+        delta = max_val - min_val
+        plt.ylim(ymin=0, ymax=max_val + delta * 0.05 )
+
+    def setup_axis(self, ax, group_width, sep_width):
+
+        # calculate x-axis labels
         family = next(iter(self.families))
         contenders = family.data.keys()
         labels = [c[self.group_var] for c in contenders]
-        indexes = np.arange(len_g)
 
-        plt.xticks(indexes, labels, rotation=-45, ha="center")  # rotation_mode="anchor")
-        self.do_final_step(name)
+        # calculate x-axis label positions
+        offset = (group_width - sep_width) / 2.0
+        tick_pos = np.arange(self.len_groups()) * group_width
+        label_pos = tick_pos + offset
+
+        # setup axis ticks and labels at plot
+        ax.xaxis.set_ticks_position('bottom')
+        ax.yaxis.set_ticks_position('left')
+        ax.xaxis.set_minor_locator(ticker.FixedLocator(label_pos))  # Customize minor tick labels
+        ax.xaxis.set_minor_formatter(ticker.FixedFormatter(labels))
+        ax.grid(False)
+        plt.xticks(tick_pos + group_width, '', ha="center")  # rotation=-45
 
     def len_groups(self):
         return len(next(iter(self.families)).data)
@@ -173,19 +243,6 @@ class Plotter:
     def total_len(self):
         return self.len_families() * self.len_groups()
 
-    def do_final_step(self, name):
-        # ax.set_aspect(0.7)
-
-        plt.xlim(xmin=-0.25, xmax=self.len_groups())
-        plt.ylim(ymin=0)
-        plt.xlabel(self.label)
-        plt.title(self.title, y=1.12)
-        plt.subplots_adjust(left=0.25, top=0.85, bottom=0.25)
-        # plt.legend()
-        # plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
-
-        #plt.tight_layout()
-        plt.savefig(name + '.pdf')
 
 class Family:
     def __init__(self, id):
