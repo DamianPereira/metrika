@@ -41,7 +41,7 @@ plt.rcParams['legend.fontsize'] = 10
 plt.rcParams['figure.titlesize'] = 12
 
 class Plotter:
-    def __init__(self, configurator, label='a label', title='a title' ):
+    def __init__(self, configurator, label='', title=''):
         self.configurator = configurator
         self.label = label
         self.title = title
@@ -65,13 +65,14 @@ class Plotter:
         self.families = [Family(id) for id in ids]
         for cont, measures in results.items():
             f = next(x for x in self.families if x.id == without[cont])
-            f.data[cont] = [m[0] for m in measures]
+            data = [m[0] for m in measures]
+            f.add_data(cont, data)
 
     def min_max_values(self):
         min = 1000000000000
         max = -100000000000
         for f in self.families:
-            for _, measures in f.data.items():
+            for measures in f.data:
                 for m in measures:
                     if m > max:
                         max = m
@@ -79,41 +80,6 @@ class Plotter:
                         min = m
 
         return min, max
-
-    def plot_boxes2(self, name):
-        # fake data
-        np.random.seed(937)
-        data = np.random.lognormal(size=(37, 4), mean=1.5, sigma=1.75)
-        labels = list('ABCD')
-        fs = 10  # fontsize
-
-        # demonstrate how to toggle the display of different elements:
-        fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(6, 6))
-        axes[0, 0].boxplot(data, labels=labels)
-        axes[0, 0].set_title('Default', fontsize=fs)
-
-        axes[0, 1].boxplot(data, labels=labels, showmeans=True)
-        axes[0, 1].set_title('showmeans=True', fontsize=fs)
-
-        axes[0, 2].boxplot(data, labels=labels, showmeans=True, meanline=True)
-        axes[0, 2].set_title('showmeans=True,\nmeanline=True', fontsize=fs)
-
-        axes[1, 0].boxplot(data, labels=labels, showbox=False, showcaps=False)
-        axes[1, 0].set_title('Tufte Style \n(showbox=False,\nshowcaps=False)', fontsize=fs)
-
-        axes[1, 1].boxplot(data, labels=labels, notch=True, bootstrap=10000)
-        axes[1, 1].set_title('notch=True,\nbootstrap=10000', fontsize=fs)
-
-        axes[1, 2].boxplot(data, labels=labels, showfliers=False)
-        axes[1, 2].set_title('showfliers=False', fontsize=fs)
-
-        for ax in axes.flatten():
-            ax.set_yscale('log')
-            ax.set_yticklabels([])
-
-        fig.subplots_adjust(hspace=0.4)
-        # plt.show()
-        plt.savefig(name + '.pdf')
 
     def plot_boxes(self, name):
         len_t = self.total_len()
@@ -129,12 +95,13 @@ class Plotter:
         # draw boxplots
         legends = []
         for i, family in enumerate(sorted(self.families, key=lambda f: f.id)):
+            color = color_number(i)
+            color_dark = darken(color)
+
             offset = i*(box_width+sep_width)
             positions = np.arange(len_g) * group_width + offset
 
-            print("pos " + str(positions))
-
-            values = list(family.data.values())
+            values = family.data
             box = plt.boxplot(values,
                               positions=positions,
                               widths=box_width,
@@ -147,21 +114,23 @@ class Plotter:
                 line.set_linewidth(0.8)
 
             for line in box['boxes']:
-                line.set_facecolor(color_number(i))
-                line.set_edgecolor('black')
+                line.set_facecolor(color)
+                line.set_edgecolor(color_dark)
                 line.set_linewidth(0.5)
 
             plt.setp(box['whiskers'], linewidth=0.5)
             plt.setp(box['whiskers'], linestyle='-')
             plt.setp(box['caps'], linewidth=0.5)
             # plt.setp(box['boxes'], color=colors[i])
-            plt.setp(box['whiskers'], color='black')
-            plt.setp(box['fliers'], color='Tomato', marker="+")  # color_number(len_g+2), marker='o')
+            plt.setp(box['caps'], color=color_dark)
+            plt.setp(box['whiskers'], color=color_dark)
+            plt.setp(box['fliers'], markeredgecolor=color_dark, marker="+")
+            plt.setp(box['fliers'], markerfacecolor=color)
 
             legends.append(box['boxes'][0])
 
         # create a legend
-        labels = [str(family.id) for family in self.families]
+        labels = [str(family.name) for family in self.families]
         plt.legend(legends, labels, loc='best')
 
         self.setup_limits(box_width, group_width)
@@ -181,10 +150,8 @@ class Plotter:
         legends = []
         for i, family in enumerate(sorted(self.families, key=lambda f: f.id)):
             positions = np.arange(len_g) + bar_width * i
-            print("positions")
-            print(positions)
 
-            values = list(family.data.values())
+            values = family.data
             means = np.average(values)
             stddevs = np.std(values)
 
@@ -201,7 +168,7 @@ class Plotter:
 
             legends.append(bars[0])
 
-        labels = [str(family.id) for family in self.families]
+        labels = [str(family.name) for family in self.families]
         plt.legend(legends, labels, loc='best')
 
         self.setup_axis(ax, 1, bar_width)
@@ -218,7 +185,7 @@ class Plotter:
 
         # calculate x-axis labels
         family = next(iter(self.families))
-        contenders = family.data.keys()
+        contenders = family.contenders
         labels = [c[self.group_var] for c in contenders]
 
         # calculate x-axis label positions
@@ -247,11 +214,34 @@ class Plotter:
 class Family:
     def __init__(self, id):
         self.id = id
-        self.name = str(id)
-        self.data = {}
+        self.contenders = []
+        self.data = []
+
+    def add_data(self, contender, data):
+        self.contenders.append(contender)
+        self.data.append(data)
+
+    @property
+    def name(self):
+        if isinstance(self.id, str):
+            return self.id
+        else:
+            return ','.join(map(str, self.id))
+
+    def __repr__(self):
+        return self.name
+
 
 # not used anymore
 # colors = ['cyan', 'lightblue', 'lightgreen', 'tan', 'pink']
 
 def color_number(i):
     return list(plt.rcParams['axes.prop_cycle'])[i]['color']
+
+
+def darken(color):
+    return '#%x' % ((int(color[1:], 16) & 0xfefefe) >> 1);
+
+
+def lighten(color):
+    return '#%x' % ((int(color[1:], 16) & 0x7f7f7f) << 1);

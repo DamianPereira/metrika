@@ -1,13 +1,12 @@
 
-import metrika.reporter as reporter
 from metrika.database import Database
 from metrika.experiment import Experiment
 from metrika.reporter import Reporter
+from metrika.plotter import Plotter
 
 import argparse
 import socket
 import sys
-from subprocess import call
 
 
 class Engine:
@@ -18,6 +17,7 @@ class Engine:
         self.experiments = {}
         self.arguments = self.parse_arguments()
         self.database = Database(self.arguments.testbed)
+        self.plotter = None
 
     def organize_experiment(self, suite, name=None):
         experiment = Experiment(suite, name)
@@ -88,10 +88,15 @@ class Engine:
             results = self.existing_results_of([exp])
             for i, measure_name in enumerate(exp.measures):
                 exp.plot(name + ' ' + measure_name, results, i)
+                pass
 
-                # plan = self.coordinator.generate_fixture_for(self)
-        # results = self.database.measured_results_of(plan)
-        # self.coordinator.plot(results, self.database.testbed)
+        if self.plotter is not None:
+            results = self.existing_results_of(self.experiments.values())
+            self.plotter.run_with(results, 'all', 0)
+
+    def set_plotter(self, configurator, name, description):
+        self.plotter = Plotter(configurator, name, description)
+
 
     def try_setting_stable_cpufreq(self):
         #call('echo "1" | tee /sys/devices/system/cpu/intel_pstate/no_turbo', shell=True)
