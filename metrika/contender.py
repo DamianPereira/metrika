@@ -8,6 +8,9 @@ class Contender:
         strings = tuple(str(v.id()) for v in self.values)
         return str(strings) + " contender"
 
+    def __lt__(self, other):
+        return self.values < other.values
+
     def __getitem__(self, item):
         idx = self.index_of(item)
         return self.values[idx]

@@ -18,6 +18,9 @@ class AnonValue:
     def __repr__(self):
         return ":" + str(self._value)
 
+    def __lt__(self, other):
+        return self._value < other._value
+
     def id(self):
         return self._value
 
@@ -35,6 +38,9 @@ class NamedValue:
 
     def __repr__(self):
         return self.name + ":" + str(self._value)
+
+    def __lt__(self, other):
+        return self._value < other._value
 
     def id(self):
         return self.name
