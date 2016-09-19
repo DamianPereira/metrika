@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib
+import statistics
 
 matplotlib.use('PDF')
 
@@ -87,7 +88,7 @@ class Plotter:
         len_g = self.len_groups()
 
         box_width = 1.0 / (len_f + 2)
-        sep_width = box_width / (len_f - 1)
+        sep_width = box_width / (len_f - 1) if len_f > 1 else box_width
         group_width = (box_width + sep_width) * len_f
 
         fig, ax = plt.subplots()
@@ -138,6 +139,69 @@ class Plotter:
 
         plt.savefig(name + '.pdf')
 
+    def plot_boxes_h(self, name, group_labels=None):
+        all_results = self.results
+
+        # process results
+        sample = next(iter(all_results.values()))
+        sample_contenders = sample.keys()
+
+        len_f = self.len_families()
+        len_g = self.len_groups()
+
+        group_width = 1.0
+        separations = len_f - 1
+        box_width = group_width / (len_f + 3)
+        sep_width = box_width / separations
+
+        fig, ax = plt.subplots()
+
+        # draw boxplots
+        legends = []
+        for i, family in enumerate(self.families):
+            color = color_number(i)
+            color_dark = darken(color)
+
+            offset = i * (box_width + sep_width)
+            positions = np.arange(len_g) * group_width + offset
+
+            values = family.data
+            box = plt.boxplot(values, 0, 'rs', 0,
+                              positions=positions,
+                              widths=box_width,
+                              # showcaps=False,
+                              # showmeans=True, meanline=True,
+                              patch_artist=True)
+
+            for line in box['medians']:
+                line.set_color('#880000')  # color_number(len_g+1)) # '#AAAAAA')
+                line.set_linewidth(0.8)
+
+            for line in box['boxes']:
+                line.set_facecolor(color)
+                line.set_edgecolor(color_dark)
+                line.set_linewidth(0.5)
+
+            plt.setp(box['whiskers'], linewidth=0.5)
+            plt.setp(box['whiskers'], linestyle='-')
+            plt.setp(box['caps'], linewidth=0.5)
+            # plt.setp(box['boxes'], color=colors[i])
+            plt.setp(box['caps'], color=color_dark)
+            plt.setp(box['whiskers'], color=color_dark)
+            plt.setp(box['fliers'], markeredgecolor=color_dark, marker="+")
+            plt.setp(box['fliers'], markerfacecolor=color)
+
+            legends.append(box['boxes'][0])
+
+        # create a legend
+        labels = [family.name for family in self.families]
+        plt.legend(legends, labels, loc='best')
+
+        self.setup_limits_h(box_width, group_width)
+        self.setup_axis_h(ax, group_width, box_width, sep_width, group_labels)
+
+        plt.savefig(name + '.pdf')
+
     def plot_bars(self, name):
         len_t = self.total_len()
         len_f = self.len_families()
@@ -151,20 +215,19 @@ class Plotter:
         for i, family in enumerate(sorted(self.families, key=lambda f: f.id)):
             positions = np.arange(len_g) + bar_width * i
 
-            values = family.data
-            means = np.average(values)
-            stddevs = np.std(values)
+            # values = family.data
+            medians = [statistics.median(measures) for measures in family.data]
+            try:
+                stddevs = [statistics.stdev(measures) for measures in family.data]
+            except statistics.StatisticsError:
+                stddevs = [0 for _ in family.data]
 
-            bars = plt.bar(positions, means, bar_width,
+            bars = plt.bar(positions, medians, bar_width,
                     alpha=opacity,
                     color=color_number(i),
-                    #color='#bbbbbb',
                     ecolor='#444444',
                     linewidth=0.5,
-                    #hatch=patterns[i],
                     yerr=stddevs)
-                    # error_kw=error_config,
-                    #label=contenders[i])
 
             legends.append(bars[0])
 
@@ -175,18 +238,114 @@ class Plotter:
 
         plt.savefig(name + '.pdf')
 
+    def plot_bars_h(self, name, group_labels=None):
+        all_results = self.results
+
+        normalizer = 'python3'
+        max_val = 1
+
+
+        len_f = self.len_families()
+        len_g = self.len_groups()
+
+        group_width = len_f * 10
+        separations = len_f - 1
+        box_width = group_width / (len_f + 1)
+        sep_width = 0
+
+        fig, ax = plt.subplots()
+
+        # draw bars
+        legends = []
+        for i, family in enumerate(self.families):
+            color = color_number(i)
+            color_dark = darken(color)
+
+            offset = i * (box_width + sep_width)
+            positions = np.arange(len_g) * group_width + offset
+
+            medians = [statistics.median(measures) for measures in family.data]
+            try:
+                stddevs = [statistics.stdev(measures) for measures in family.data]
+            except statistics.StatisticsError:
+                stddevs = [0 for _ in family.data]
+
+
+            bars = plt.barh(positions, medians, box_width,
+                            alpha=opacity,
+                            color=color_number(i),
+                            # color='#bbbbbb',
+                            ecolor='#444444',
+                            linewidth=0.5,
+                            # hatch=patterns[i],
+                            xerr=stddevs)
+            # error_kw=error_config,
+            # label=contenders[i])
+
+            legends.append(bars[0])
+
+        # create a legend
+        labels = [family.name for family in self.families]
+        plt.legend(legends, labels, loc='best')
+
+        self.setup_limits_h(box_width, group_width)
+        self.setup_axis_h(ax, group_width, box_width, sep_width, group_labels)
+
+        plt.savefig(name + '.pdf')
+
+    def plot_progression(self, name):
+        len_t = self.total_len()
+        len_f = self.len_families()
+        len_g = self.len_groups()
+
+        bar_width = 1.0 / (len_f + 1)
+
+        fig, ax = plt.subplots()
+
+        legends = []
+        for i, family in enumerate(sorted(self.families, key=lambda f: f.id)):
+            # values = family.data
+            medians = [statistics.median(measures) for measures in family.data]
+            try:
+                stddevs = [statistics.stdev(measures) for measures in family.data]
+            except statistics.StatisticsError:
+                stddevs = [0 for _ in family.data]
+
+            lines = plt.plot(medians,
+                    alpha=opacity,
+                    color=color_number(i),
+                    linewidth=0.5,
+                    #yerr=stddevs
+                             )
+
+            legends.append(lines[0])
+
+        labels = [str(family.name) for family in self.families]
+        plt.legend(legends, labels, loc='best')
+
+        #self.setup_axis(ax, 1, bar_width)
+        min_val, max_val = self.min_max_values()
+        delta = max_val - min_val
+        plt.ylim(ymin=0, ymax=max_val + delta * 0.05)
+
+        plt.savefig(name + '.pdf')
+
     def setup_limits(self, box_width, group_width):
         plt.xlim(xmin=-box_width, xmax=self.len_groups() * group_width + box_width)
         min_val, max_val = self.min_max_values()
         delta = max_val - min_val
-        plt.ylim(ymin=0, ymax=max_val + delta * 0.05 )
+        plt.ylim(ymin=0, ymax=max_val + delta * 0.05)
 
-    def setup_axis(self, ax, group_width, sep_width):
+    def setup_axis(self, ax, group_width, sep_width, group_labels=None):
 
         # calculate x-axis labels
         family = next(iter(self.families))
         contenders = family.contenders
-        labels = [c[self.group_var] for c in contenders]
+        if group_labels is None:
+            try:
+                group_labels = [c[self.group_var] for c in contenders]
+            except Exception:
+                group_labels = contenders
 
         # calculate x-axis label positions
         offset = (group_width - sep_width) / 2.0
@@ -197,9 +356,40 @@ class Plotter:
         ax.xaxis.set_ticks_position('bottom')
         ax.yaxis.set_ticks_position('left')
         ax.xaxis.set_minor_locator(ticker.FixedLocator(label_pos))  # Customize minor tick labels
-        ax.xaxis.set_minor_formatter(ticker.FixedFormatter(labels))
+        ax.xaxis.set_minor_formatter(ticker.FixedFormatter(group_labels))
         ax.grid(False)
         plt.xticks(tick_pos + group_width, '', ha="center")  # rotation=-45
+
+    def setup_limits_h(self, box_width, group_width):
+        plt.ylim(ymin=-box_width, ymax=self.len_groups() * group_width + box_width)
+        min_val, max_val = (0, self.min_max_values()[1])
+        delta = max_val - min_val
+        plt.xlim(xmin=0, xmax=max_val + delta * 0.05)
+
+    def setup_axis_h(self, ax, group_width, bar_width, sep_width, group_labels):
+
+        # calculate axis labels
+        family = next(iter(self.families))
+        contenders = family.contenders
+        if group_labels is None:
+            try:
+                group_labels = [c[self.group_var] for c in contenders]
+            except Exception:
+                group_labels = contenders
+
+        # calculate y-axis label positions
+        offset = (group_width - bar_width - sep_width) / 2.0
+        tick_pos = np.arange(self.len_groups()) * group_width
+        label_pos = tick_pos + offset
+
+        # setup axis ticks and labels at plot
+        ax.xaxis.set_ticks_position('bottom')
+        ax.yaxis.set_ticks_position('left')
+
+        #ax.yaxis.set_minor_locator(ticker.FixedLocator(label_pos))  # Customize minor tick labels
+        #ax.yaxis.set_minor_formatter(ticker.FixedFormatter(group_labels))
+        ax.grid(False)
+        plt.yticks(label_pos, group_labels, ha="right", va="center")  # rotation=-45
 
     def len_groups(self):
         return len(next(iter(self.families)).data)
@@ -226,22 +416,31 @@ class Family:
         if isinstance(self.id, str):
             return self.id
         else:
-            return ','.join(map(str, self.id))
+            return ', '.join(map(str, self.id))
 
     def __repr__(self):
         return self.name
 
 
-# not used anymore
-# colors = ['cyan', 'lightblue', 'lightgreen', 'tan', 'pink']
+# palette 1
+colors = ['#0CF2E5', '#1926BF', '#E53F59', '#33A572', '#3F724C', '#BF8CCC', '#5959FF', '#66BFD8', '#99D83F', '#7F0C8C', '#8C0C66', '#7226B2', '#A5BF19', '#B259F2', '#4C7226', '#CC72A5', '#D8A57F', '#26BF99', '#F22633', '#FFF20C']
+
+# palette 2
+colors = ['#FA1919', '#F5DF18', '#43F018', '#17EBAB', '#176AE6', '#7B16E0', '#DB168C', '#D64F15', '#ABD115', '#14CC27', '#14C7C7', '#1325C2', '#9B13BD', '#B81244', '#B37212', '#5FAD11', '#11A84D', '#1077A3', '#2C109E', '#990F8B']
+
+colors = [prop['color'] for prop in plt.rcParams['axes.prop_cycle']] + colors
+
 
 def color_number(i):
-    return list(plt.rcParams['axes.prop_cycle'])[i]['color']
+    return colors[i]
 
 
 def darken(color):
-    return '#%x' % ((int(color[1:], 16) & 0xfefefe) >> 1);
+    return '#%06x' % ((int(color[1:], 16) & 0xfefefe) >> 1);
 
 
 def lighten(color):
-    return '#%x' % ((int(color[1:], 16) & 0x7f7f7f) << 1);
+    return '#%06x' % ((int(color[1:], 16) & 0x7f7f7f) << 1);
+
+def saturate(color):
+    return '#%06x' % ((int(color[1:], 16) & 0x7f7f7f) << 1);
