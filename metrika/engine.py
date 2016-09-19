@@ -1,7 +1,6 @@
 
 from metrika.database import Database
 from metrika.experiment import Experiment
-from metrika.reporter import Reporter
 from metrika.plotter import Plotter
 
 import argparse
