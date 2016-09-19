@@ -17,6 +17,7 @@ class Experiment:
         self.runner = runner
         self.measures = []
         self.reporter = None
+        self.plotter = None
         self.setup = lambda self: self
         self.teardown = lambda self: self
 
@@ -51,7 +52,7 @@ class Experiment:
         self.executor.measure_parsing_file(description, parser, filename)
 
     def run(self, arguments):
-        print("Runing experiment " + self.name)
+        print("\nRunning experiment " + self.name)
         contenders = self.suite.instances()
         for contender in contenders:
             contender.setup = MethodType(self.setup, contender)
@@ -67,7 +68,7 @@ class Experiment:
 
     def use_generic_reporter(self):
         self.reporter = Reporter('', '')
-        self.reporter.add_column('contender', lambda contender, _: contender)
+        self.reporter.add_column('contender', lambda contender, _: contender, 40)
         self.reporter.add_common_columns()
         self.reporter.sort_by(lambda row: row[0])
 
@@ -78,8 +79,6 @@ class Experiment:
         self.reporter.report(name, results, i)
 
     def plot(self, name, results, i):
-        if self.plotter is None:
-            self.use_generic_plotter()
-
-        self.plotter.run_with(results, name, i)
+        if self.plotter is not None:
+            self.plotter.run_with(results, name, i)
 
