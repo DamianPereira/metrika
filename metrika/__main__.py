@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import sys
+if sys.version_info < (3, 4):
+    raise Exception("must use python 3.4 or greater")
 
 from metrika.engine import Engine
 import glob
-
 __author__ = 'Javier Pimás'
+
 
 
 if __name__ == '__main__':
