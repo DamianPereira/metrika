@@ -66,7 +66,6 @@ class Engine:
         print("experiments to run: " + str(self.work))
         print("experiments skipped: " + str(self.done))
 
-        self.try_setting_stable_cpufreq()
 
         old_results = self.existing_results_of(self.done)
         sorted_work = sorted(self.work, key=lambda exp: exp.name)
@@ -96,19 +95,6 @@ class Engine:
     def set_plotter(self, configurator, name, description):
         self.plotter = Plotter(configurator, name, description)
 
-
-    def try_setting_stable_cpufreq(self):
-        #call('echo "1" | tee /sys/devices/system/cpu/intel_pstate/no_turbo', shell=True)
-        #call('echo "100" | tee /sys/devices/system/cpu/intel_pstate/max_perf_pct', shell=True)
-        #call('echo "100" | tee /sys/devices/system/cpu/intel_pstate/min_perf_pct', shell=True)
-        pass
-
-        # some other tools to check cpu frequency:
-        # watch -n 0,3 'cat /proc/cpuinfo | grep "MHz"'
-
-        # also check http://askubuntu.com/questions/698195/how-to-make-cpugovernor-intel-pstate-stable
-
-
     def parse_arguments(self):
         parser = argparse.ArgumentParser(prog='Metrika', description='A scientifically rigorous measurement tool')
         parser.add_argument('-v', '--verbose', action='store_true', help='show more output')
@@ -127,24 +113,25 @@ class Engine:
                                 help='show output of programs being run in stdout')
         parser_run.add_argument('-e', '--hide-errors', action='store_true',
                                 help='hide errors of programs being run')
-        parser_run.add_argument('series', help='choose which series to run')
+        parser_run.add_argument('-r', '--restrict', help='restrict a variable to a value')
         parser_run.set_defaults(func=self.run_command)
 
         parser_report = subparsers.add_parser('report', help='report measures given results database, without running\n'
                                                              ' benchs again')
-        parser_report.add_argument('series', help='choose which series to report')
+        parser_report.add_argument('-r', '--restrict', help='restrict a variable to a value')
         parser_report.set_defaults(func=self.report_command)
 
         parser_plot = subparsers.add_parser('plot', help='plot results from database contents')
-        parser_plot.add_argument('series', help='choose which series to plot')
+        parser_plot.add_argument('-r', '--restrict', help='restrict a variable to a value')
         parser_plot.set_defaults(func=self.plot_command)
 
-        parser.set_default_subparser('run')
+        #parser.set_default_subparser('run') # breaks global arguments
         return parser.parse_args()
 
     @property
     def machine_name(self):
         return socket.gethostname()
+
 
 def set_default_subparser(self, name, args=None):
     """default subparser selection. Call after setup, just before parse_args()
