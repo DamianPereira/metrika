@@ -35,15 +35,16 @@ class CommandExecutor(Executor):
             print(self.command_to_execute(contender, options))
 
         # TODO: add nice support
+        err_cut = ""
+        out_cut = ''
 
         if not options.show_output:
-            err_cut = " 2>&1"
-            if run_number == 0:
-                err_cut = " 2>&1"
-            #else:
-            #    err_cut = " 2>/dev/null"
+            if run_number != 0:
+                out_cut = " 1>/dev/null"
 
-            command = command + err_cut #+ " >/dev/null | head -n 25"
+            #    err_cut = " 2>&1"
+
+            command = command + out_cut #+ " >/dev/null | head -n 25"
             # command = command + err_cut + " | head -n 25"
         for meter in self.meters:
             meter.start()
