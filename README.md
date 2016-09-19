@@ -95,26 +95,27 @@ An example of a very simple configuration is this:
 This measures time elapsed to join lists of strings using different
 implementations. It can be run with:
 
-    $> python -m metrika -i 28 -x join-perf size=big
+    $> python -m metrika run -i 28 -x join-perf -r size=big
 
-    experiments to run: {join-perf exp: []}
+    experiments to run: {join-perf exp: [('str', 'big') contender, ('list', 'big') contender]}
     experiments skipped: [join-perf exp]
+
     Running experiment join-perf
-    running 28 passes of ('list', 'big') contender. 
-    1... 2... 3... 4... 5... 6... 7... 8... 9... 10... 11... 12... 13... 14... 15... 16... 17... 18... 19... 20... 21... 22... 23... 24... 25... 26... 27... 28... 
     running 28 passes of ('str', 'big') contender. 
+    1... 2... 3... 4... 5... 6... 7... 8... 9... 10... 11... 12... 13... 14... 15... 16... 17... 18... 19... 20... 21... 22... 23... 24... 25... 26... 27... 28... 
+    running 28 passes of ('list', 'big') contender. 
     1... 2... 3... 4... 5... 6... 7... 8... 9... 10... 11... 12... 13... 14... 15... 16... 17... 18... 19... 20... 21... 22... 23... 24... 25... 26... 27... 28... 
     -----
     join-perf time
     -----
-              contender            | median | std dev % | runs 
-    ===============================+========+===========+=====
-         ('list', 'big') contender |  0.276 |    2.30 % |   28 
-          ('str', 'big') contender |  0.257 |    4.12 % |   28 
-    .............................. | ...... | ......... | .... 
+    contender |     input      | median | std dev % | runs 
+    ==========+================+========+===========+=====
+          str |    big:1000000 |  0.396 |    3.47 % |   28 
+         list |    big:1000000 |  0.426 |    2.47 % |   28 
+    ......... | .............. | ...... | ......... | .... 
     
-    results obtained at 2016-09-14 00:43:38.915307 in the following system:
-    
+    results obtained at 2016-09-19 16:43:13.002494 in the following system:
+
     testbed: example-laptop
     os:  Ubuntu 16.04 xenial (Linux-4.4.9-040409-generic-x86_64).
     cpu: Intel(R) Core(TM) i7-4510U CPU @ 2.00GHz (@2.85 GHz), 4096 KB l2 cache, 4 logical cores (2 physical)
