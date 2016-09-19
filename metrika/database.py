@@ -42,15 +42,18 @@ class Database:
             return out.write(stream)
 
     def reject_already_measured_in(self, experiments):
-        new_plan = {}
+        missing = []
         for experiment in experiments:
             if experiment.name not in self.results:
-                new_plan[experiment] = experiment.instances()
+                missing.append(experiment)
+
             else:
-                new_plan[experiment] = []
                 for contender in experiment.instances():
                     if contender.id() not in self.results[experiment.name]:
-                        new_plan[experiment].append(contender)
+                        missing.append(experiment)
+                        break
+
+        new_plan = {experiment: experiment.instances() for experiment in missing}
 
         return new_plan
 
@@ -62,9 +65,12 @@ class Database:
                 continue
 
             stored = self.results[experiment.name]
-            foo = {contender: stored[contender.id()] for contender in experiment.instances()}
+            values = {}
+            for contender in experiment.instances():
+                if contender.id() in stored:
+                    values[contender] = stored[contender.id()]
 
-            results[experiment.name] = foo
+            results[experiment.name] = values
 
         return results
 

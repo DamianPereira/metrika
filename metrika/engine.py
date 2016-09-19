@@ -55,17 +55,16 @@ class Engine:
             experiment.restrict(self.arguments)
 
         if self.arguments.force:
-            self.work = self.experiments
+            self.work = {experiment: experiment.instances() for experiment in self.experiments.values()}
         else:
             self.work = self.reject_already_measured_in(self.experiments)
 
-        self.done = [x for x in self.work if x.name not in self.experiments]
+        self.done = [x for x in self.experiments.values() if x.name not in self.work]
 
     def run(self):
 
         print("experiments to run: " + str(self.work))
         print("experiments skipped: " + str(self.done))
-
 
         old_results = self.existing_results_of(self.done)
         sorted_work = sorted(self.work, key=lambda exp: exp.name)
@@ -76,21 +75,27 @@ class Engine:
         self.database.save(new_results)
 
     def report(self):
-        for name, exp in sorted_items(self.experiments):
-            results = self.existing_results_of([exp])
-            for i, measure_name in enumerate(exp.measures):
-                exp.report(name + ' ' + measure_name, results, i)
+            for name, exp in sorted_items(self.experiments):
+                results = self.existing_results_of([exp])
+                for i, measure_name in enumerate(exp.measures):
+                    try:
+                        exp.report(name + ' ' + measure_name, results, i)
+                    except Exception:
+                        print("Failed to write a report")
 
     def plot(self):
-        for name, exp in sorted_items(self.experiments):
-            results = self.existing_results_of([exp])
-            for i, measure_name in enumerate(exp.measures):
-                exp.plot(name + ' ' + measure_name, results, i)
-                pass
+        #try:
+            for name, exp in sorted_items(self.experiments):
+                results = self.existing_results_of([exp])
+                for i, measure_name in enumerate(exp.measures):
+                    exp.plot(name + ' ' + measure_name, results, i)
+                    pass
 
-        if self.plotter is not None:
-            results = self.existing_results_of(self.experiments.values())
-            self.plotter.run_with(results, 'all', 0)
+            if self.plotter is not None:
+                results = self.existing_results_of(self.experiments.values())
+                self.plotter.run_with(results, 'all', 0)
+        #except Exception:
+        #    print("Failed to output plot")
 
     def set_plotter(self, configurator, name, description):
         self.plotter = Plotter(configurator, name, description)
