@@ -40,7 +40,7 @@ class Reporter:
         self.add_column('std dev', lambda _, results: s.pstdev(results))
 
     def add_stdev_rel(self):
-        self.add_column('std dev %', lambda _, results: "%2.2f %%" % (s.pstdev(results) * 100 / s.mean(results)))
+        self.add_column('std dev %', lambda _, results: "%2.2f %%" % (s.pstdev(results) * 100 / s.median(results)))
 
     def add_runs(self):
         self.add_column('runs', lambda _, res: len(res))
@@ -54,6 +54,10 @@ class Reporter:
         self.sorter = sorter
 
     def report(self, title, results, i):
+        print("-----")
+        print(title)
+        print("-----")
+
         tab = tt.Texttable()
         tab.header([c.name for c in self.columns])
 
@@ -76,9 +80,6 @@ class Reporter:
         tab.set_cols_width([c.size for c in self.columns])
 
         table = tab.draw()
-        print("-----")
-        print(title)
-        print("-----")
         print(table)
 
         print("\nresults obtained at %s in the following system:\n" % datetime.datetime.now())
