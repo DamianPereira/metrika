@@ -26,10 +26,11 @@ class Suite:
         #        args.append(arg)
         #    else:
         #        args.append(self.typical_parameters[arg])
-        arg = arguments.series
-        (var, value) = arg.split('=')
-        variable = next(x for x in self.variables if x.name == var)
-        variable.restrict_to(value)
+        if arguments.restrict is not None:
+            for restriction in arguments.restrict.split(','):
+                (var, value) = restriction.split('=')
+                variable = next(x for x in self.variables if x.name == var)
+                variable.restrict_to(value)
 
     def instances(self):
         names = [var.name for var in self.variables]
