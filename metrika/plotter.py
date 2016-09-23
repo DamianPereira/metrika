@@ -46,6 +46,12 @@ class Plotter:
         self.configurator = configurator
         self.label = label
         self.title = title
+        self.xlabel = ""
+        self.ylabel = ""
+        self.xscale = "linear"
+        self.yscale = "linear"
+        self.xformat = plt.ScalarFormatter()
+        self.yformat = plt.ScalarFormatter()
 
     def run_with(self, results, name, i):
         self.results = results
@@ -228,7 +234,7 @@ class Plotter:
                     ecolor='#444444',
                     linewidth=0.5,
                     yerr=stddevs)
-
+                    
             legends.append(bars[0])
 
         labels = [str(family.name) for family in self.families]
@@ -338,6 +344,12 @@ class Plotter:
 
     def setup_axis(self, ax, group_width, sep_width, group_labels=None):
 
+        # set axis labels and scales
+        ax.set_xlabel(self.xlabel)
+        ax.set_ylabel(self.ylabel)
+        ax.set_xscale(self.xscale)
+        ax.set_yscale(self.yscale)
+
         # calculate x-axis labels
         family = next(iter(self.families))
         contenders = family.contenders
@@ -358,6 +370,11 @@ class Plotter:
         ax.xaxis.set_minor_locator(ticker.FixedLocator(label_pos))  # Customize minor tick labels
         ax.xaxis.set_minor_formatter(ticker.FixedFormatter(group_labels))
         ax.grid(False)
+
+        # set axis formatters
+        ax.get_yaxis().set_major_formatter(self.yformat)
+        ax.get_xaxis().set_major_formatter(self.xformat)
+
         plt.xticks(tick_pos + group_width, '', ha="center")  # rotation=-45
 
     def setup_limits_h(self, box_width, group_width):
