@@ -33,7 +33,7 @@ plt.rcParams['font.family'] = 'serif'
 #plt.rcParams['font.size'] = 10
 plt.rcParams['axes.facecolor'] = '#FFFFFF'
 plt.rcParams['legend.edgecolor'] = 'black'
-plt.rcParams['axes.labelsize'] = 10
+plt.rcParams['axes.labelsize'] = 9
 plt.rcParams['axes.labelweight'] = 'bold'
 plt.rcParams['axes.titlesize'] = 10
 plt.rcParams['xtick.labelsize'] = 8
@@ -212,6 +212,7 @@ class Plotter:
         len_t = self.total_len()
         len_f = self.len_families()
         len_g = self.len_groups()
+        min_val, max_val = self.min_max_values()
 
         bar_width = 1.0 / (len_f + 1)
 
@@ -234,7 +235,11 @@ class Plotter:
                     ecolor='#444444',
                     linewidth=0.5,
                     yerr=stddevs)
-
+            for j,m in enumerate(medians):
+                ax.text(i * bar_width + j * (len_f + 1) * bar_width + bar_width/2,
+                    m + max_val/50, str(m), horizontalalignment='center',
+                    size=plt.rcParams['axes.labelsize'])
+                print(plt.rcParams['axes.labelsize'])
             legends.append(bars[0])
 
         labels = [str(family.name) for family in self.families]
