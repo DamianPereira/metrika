@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib
 import statistics
 
-matplotlib.use('PDF')
+#matplotlib.use('PDF')
 
 import matplotlib.pyplot as plt
 from matplotlib import ticker
@@ -143,7 +143,7 @@ class Plotter:
         self.setup_limits(box_width, group_width)
         self.setup_axis(ax, group_width, sep_width)
 
-        plt.savefig(name + '.pdf')
+        plt.savefig(name + '.png')
 
     def plot_boxes_h(self, name, group_labels=None):
         all_results = self.results
@@ -206,7 +206,7 @@ class Plotter:
         self.setup_limits_h(box_width, group_width)
         self.setup_axis_h(ax, group_width, box_width, sep_width, group_labels)
 
-        plt.savefig(name + '.pdf')
+        plt.savefig(name + '.png')
 
     def plot_bars(self, name):
         len_t = self.total_len()
@@ -234,7 +234,7 @@ class Plotter:
                     ecolor='#444444',
                     linewidth=0.5,
                     yerr=stddevs)
-                    
+
             legends.append(bars[0])
 
         labels = [str(family.name) for family in self.families]
@@ -242,7 +242,7 @@ class Plotter:
 
         self.setup_axis(ax, 1, bar_width)
 
-        plt.savefig(name + '.pdf')
+        plt.savefig(name + '.png')
 
     def plot_bars_h(self, name, group_labels=None):
         all_results = self.results
@@ -297,7 +297,7 @@ class Plotter:
         self.setup_limits_h(box_width, group_width)
         self.setup_axis_h(ax, group_width, box_width, sep_width, group_labels)
 
-        plt.savefig(name + '.pdf')
+        plt.savefig(name + '.png')
 
     def plot_progression(self, name):
         len_t = self.total_len()
@@ -334,7 +334,7 @@ class Plotter:
         delta = max_val - min_val
         plt.ylim(ymin=0, ymax=max_val + delta * 0.05)
 
-        plt.savefig(name + '.pdf')
+        plt.savefig(name + '.png')
 
     def setup_limits(self, box_width, group_width):
         plt.xlim(xmin=-box_width, xmax=self.len_groups() * group_width + box_width)
