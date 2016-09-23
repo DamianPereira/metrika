@@ -239,7 +239,6 @@ class Plotter:
                 ax.text(i * bar_width + j * (len_f + 1) * bar_width + bar_width/2,
                     m + max_val/50, str(m), horizontalalignment='center',
                     size=plt.rcParams['axes.labelsize'])
-                print(plt.rcParams['axes.labelsize'])
             legends.append(bars[0])
 
         labels = [str(family.name) for family in self.families]
