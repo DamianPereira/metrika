@@ -34,7 +34,7 @@ class Reporter:
         self.columns.append(ColumnDescriptor(name, gen, size))
 
     def add_median(self):
-        self.add_column('median', lambda _, results: s.median(results))
+        self.add_column('   median   ', lambda _, results: s.median(results))
 
     def add_stddev(self):
         self.add_column('std dev', lambda _, results: s.pstdev(results))
@@ -110,4 +110,3 @@ def get_system_info():
     info += "\nmem: %d MB phys, %d MB free" % (mem.total/mibi, mem.free/mibi)
 
     return info
-
