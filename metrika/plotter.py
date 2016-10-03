@@ -62,6 +62,7 @@ class Plotter:
         results = next(iter(self.results.values()))
         index = next(iter(results.keys())).index_of(variable)
         # groups = set(map(lambda cont, _: cont[variable], results.items()))
+
         without = {}
         for cont, _ in results.items():
             id = list(cont.id())
@@ -70,7 +71,7 @@ class Plotter:
 
         ids = set(without.values())
         self.families = [Family(id) for id in ids]
-        for cont, measures in results.items():
+        for cont, measures in sorted(results.items()):
             f = next(x for x in self.families if x.id == without[cont])
             data = [m[0] for m in measures]
             f.add_data(cont, data)
@@ -235,13 +236,14 @@ class Plotter:
                     ecolor='#444444',
                     linewidth=0.5,
                     yerr=stddevs)
+
             for j,m in enumerate(medians):
                 ax.text(i * bar_width + j * (len_f + 1) * bar_width + bar_width/2,
                     m + max_val/50, str(m), horizontalalignment='center',
                     size=plt.rcParams['axes.labelsize'])
             legends.append(bars[0])
 
-        labels = [str(family.name) for family in self.families]
+        labels = [str(family.name) for family in sorted(self.families, key=lambda f: f.id)]
         plt.legend(legends, labels, loc='best')
 
         self.setup_axis(ax, 1, bar_width)
