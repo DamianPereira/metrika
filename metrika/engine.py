@@ -130,7 +130,9 @@ class Engine:
         parser_plot.add_argument('-r', '--restrict', help='restrict a variable to a value')
         parser_plot.set_defaults(func=self.plot_command)
 
-        #parser.set_default_subparser('run') # breaks global arguments
+        if len(sys.argv) < 2:
+            parser.print_usage()
+            sys.exit(1)
         return parser.parse_args()
 
     @property
